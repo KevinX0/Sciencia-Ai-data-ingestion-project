@@ -17,7 +17,7 @@ from wordcloud import STOPWORDS
 
 # --- 2. CONFIGURATION ---
 APP_ID = 'com.openai.chatgpt'
-REVIEW_COUNT = 75000
+REVIEW_COUNT = 25000
 
 print("--- Efficient Review Analysis (Corrected Graph) ---")
 print(f"Target App: {APP_ID}")
@@ -106,7 +106,7 @@ axes[0, 1].set_title('2. Review Volume Per Day (Recent History)', fontsize=16)
 # Plot 3: Review Length Distribution (No changes)
 sns.histplot(df['review_length'], bins=50, kde=True, ax=axes[1, 0], color='darkorange')
 axes[1, 0].set_title('3. Review Length Distribution (Characters)', fontsize=16)
-axes[1, 0].set_xlim(0, 1000)
+axes[1, 0].set_xlim(0, 600)
 
 # Plot 4: Average Rating by App Version (No changes)
 if 'app_version' in df.columns and not df['app_version'].isnull().all():
