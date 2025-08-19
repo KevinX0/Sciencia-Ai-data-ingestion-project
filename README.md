@@ -1,4 +1,4 @@
-main# **Project Report: Analysis of ChatGPT Google Play Reviews**
+**Project Report: Analysis of ChatGPT Google Play Reviews**
 
 **Author:** Duoshu Xu
 
