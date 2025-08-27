@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT: FINAL STRATEGIC BUSINESS INTELLIGENCE REPORT
+# SCRIPT: STRATEGIC BUSINESS ANALYSIS REPORT
 # DESCRIPTION: This script fulfills all supervisor requirements by generating
 #              essential metadata and data samples, AND performing four deep-dive
 #              analyses for a comprehensive, client-focused strategic report.
@@ -21,7 +21,7 @@ from wordcloud import STOPWORDS
 APP_ID = 'com.openai.chatgpt'
 REVIEW_COUNT = 25000
 
-print("--- Sciencia AI: Final Strategic Business Intelligence Report ---")
+print("--- Strategic Business Analysis Report ---")
 print(f"Target App: {APP_ID}")
 print(f"Sample Size: {REVIEW_COUNT:,} reviews")
 print("-" * 60 + "\n")
