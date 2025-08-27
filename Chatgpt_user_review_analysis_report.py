@@ -1,16 +1,18 @@
 # ==============================================================================
-# SCRIPT: BALANCED AND EFFICIENT REVIEW ANALYZER (CORRECTED GRAPH)
-# DESCRIPTION: This script scrapes a substantial but manageable sample of
-#              reviews (75,000). It performs the full comprehensive analysis,
-#              with the "Review Volume" graph corrected to show daily data.
+# SCRIPT: FINAL STRATEGIC BUSINESS INTELLIGENCE REPORT
+# DESCRIPTION: This script fulfills all supervisor requirements by generating
+#              essential metadata and data samples, AND performing four deep-dive
+#              analyses for a comprehensive, client-focused strategic report.
 # ==============================================================================
 
 # --- 1. SETUP AND IMPORTS ---
 import pandas as pd
+import numpy as np
 from google_play_scraper import reviews, Sort
 import seaborn as sns
 import matplotlib.pyplot as plt
 import sys
+import re
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import STOPWORDS
@@ -19,61 +21,69 @@ from wordcloud import STOPWORDS
 APP_ID = 'com.openai.chatgpt'
 REVIEW_COUNT = 25000
 
-print("--- Efficient Review Analysis (Corrected Graph) ---")
+print("--- Sciencia AI: Final Strategic Business Intelligence Report ---")
 print(f"Target App: {APP_ID}")
-print(f"Target Sample Size: {REVIEW_COUNT:,} reviews")
-print("\n" + "="*60)
-print(f"!! This scrape should take approximately 5-15 minutes. !!")
-print("="*60 + "\n")
+print(f"Sample Size: {REVIEW_COUNT:,} reviews")
+print("-" * 60 + "\n")
 
 
-# --- 3. DATA ACQUISITION ---
-print(f"[PHASE 1/6] ACQUIRING DATA ({REVIEW_COUNT:,} reviews)...")
+# --- 3. DATA ACQUISITION AND PREPARATION ---
+print(f"[PHASE 1/5] ACQUIRING AND PREPARING DATA...")
 try:
-    result, _ = reviews(
-        APP_ID, lang='en', country='us',
-        sort=Sort.NEWEST, count=REVIEW_COUNT,
-        filter_score_with=None
-    )
-    print(f"Successfully scraped {len(result)} recent reviews.")
+    result, _ = reviews(APP_ID, lang='en', country='us', sort=Sort.NEWEST, count=REVIEW_COUNT)
+    print(f"Successfully scraped {len(result)} reviews.")
 except Exception as e:
-    print(f"An error occurred during scraping: {e}", file=sys.stderr)
+    print(f"An error occurred: {e}", file=sys.stderr)
     sys.exit(1)
 
-if not result:
-    print("No reviews were scraped. Exiting.")
-    sys.exit(1)
-
-
-# --- 4. DATA COMPILATION AND PREPARATION ---
-print("\n[PHASE 2/6] PREPARING DATAFRAME...")
 df = pd.DataFrame(result)
-df.rename(columns={'score': 'rating', 'at': 'timestamp', 'thumbsUpCount': 'thumbs_up_count', 'appVersion': 'app_version', 'content': 'review_content', 'replyContent': 'developer_reply'}, inplace=True)
+# Comprehensive rename to ensure all columns are accessible
+df.rename(columns={
+    'score': 'rating', 'at': 'timestamp', 'thumbsUpCount': 'thumbs_up_count',
+    'appVersion': 'app_version', 'content': 'review_content'
+}, inplace=True)
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 df.dropna(subset=['review_content'], inplace=True)
-df['review_length'] = df['review_content'].apply(len)
+df['review_content_lower'] = df['review_content'].str.lower()
 print("Data preparation complete.")
 
 
-# --- 5. DATA QUALITY SUMMARY TABLE ---
-print("\n[PHASE 3/6] GENERATING DATA QUALITY REPORT...")
-total_reviews = len(df)
-missing_versions = df['app_version'].isnull().sum() if 'app_version' in df.columns else total_reviews
-quality_stats = {
-    'Metric': ['Total Reviews Scraped', 'Date Range Start', 'Date Range End', 'Missing App Versions', 'Median Review Length (chars)', 'Average Rating'],
-    'Value': [f"{total_reviews:,}", df['timestamp'].min().strftime('%Y-%m-%d'), df['timestamp'].max().strftime('%Y-%m-%d'), f"{missing_versions:,} ({missing_versions/total_reviews:.2%})", f"{df['review_length'].median():.0f}", f"{df['rating'].mean():.2f}"]
+# --- 4. METADATA AND RAW DATA SAMPLES (ESSENTIAL REQUIREMENT) ---
+print("\n[PHASE 2/5] GENERATING METADATA AND RAW DATA SAMPLES...")
+
+# Create the Metadata Dictionary Table
+metadata_dict = {
+    'Field Name': ['reviewId', 'userName', 'review_content', 'rating', 'thumbs_up_count', 'timestamp', 'app_version'],
+    'Data Type': ['Text', 'Text', 'Text', 'Integer', 'Integer', 'Datetime', 'Text'],
+    'Description': [
+        'Unique identifier for the review.',
+        'Public display name of the reviewer.',
+        'The full text of the user\'s feedback.',
+        'The star rating given by the user (1-5).',
+        'Number of users who found the review helpful.',
+        'The date and time the review was submitted.',
+        'The app version the user had when reviewing.'
+    ]
 }
-quality_df = pd.DataFrame(quality_stats)
-print("\n--- Data Quality and Completeness ---")
-print(quality_df.to_string(index=False))
+metadata_df = pd.DataFrame(metadata_dict)
+print("\n--- Metadata Dictionary ---")
+print(metadata_df.to_markdown(index=False))
+
+# Create the Raw Data Sample Table
+print("\n--- Raw Data Sample (First 5 Rows) ---")
+sample_columns = ['userName', 'rating', 'thumbs_up_count', 'timestamp', 'app_version', 'review_content']
+# Ensure all columns exist before trying to display them
+display_cols = [col for col in sample_columns if col in df.columns]
+sample_df = df[display_cols].head()
+print(sample_df.to_markdown(index=False))
 
 
-# --- 6. ADVANCED TEXT ANALYSIS PREPARATION ---
-print("\n[PHASE 4/6] PREPARING TEXT FOR N-GRAM ANALYSIS...")
-negative_reviews = df[df['rating'] <= 2]['review_content']
-positive_reviews = df[df['rating'] >= 4]['review_content']
-custom_stopwords = STOPWORDS.union(['app', 'chatgpt', 'chat', 'gpt', 'OpenAI', 'I', 'The', 'it', 's'])
-def get_top_ngrams(corpus, n=2, top_k=15):
+# --- 5. PERFORMING FOUR DEEP-DIVE ANALYSES ---
+print("\n[PHASE 3/5] PERFORMING DEEP-DIVE ANALYSES...")
+
+# (The four analysis briefs are unchanged)
+def get_top_ngrams(corpus, n=2, top_k=10):
+    custom_stopwords = STOPWORDS.union(['app', 'chatgpt', 'chat', 'gpt', 'openai', 'i', 'the', 'it', 's'])
     try:
         vec = CountVectorizer(ngram_range=(n, n), stop_words=list(custom_stopwords)).fit(corpus)
         bag_of_words = vec.transform(corpus)
@@ -81,61 +91,99 @@ def get_top_ngrams(corpus, n=2, top_k=15):
         words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
         return sorted(words_freq, key = lambda x: x[1], reverse=True)[:top_k]
     except ValueError: return []
-top_negative_bigrams = get_top_ngrams(negative_reviews)
-top_positive_bigrams = get_top_ngrams(positive_reviews)
+
+top_1_percent_helpful = df.nlargest(int(len(df) * 0.01), 'thumbs_up_count')
+influential_negative = top_1_percent_helpful[top_1_percent_helpful['rating'] <= 2]
+influential_positive = top_1_percent_helpful[top_1_percent_helpful['rating'] >= 4]
+top_influential_neg_phrases = get_top_ngrams(influential_negative['review_content_lower'])
+top_influential_pos_phrases = get_top_ngrams(influential_positive['review_content_lower'])
+
+feature_keywords = {
+    'Voice': ['voice', 'speak', 'talk', 'audio'], 'Image': ['image', 'picture', 'photo', 'dall-e', 'dalle'],
+    'Model Performance': ['gpt-4o', 'gpt-5', 'new model', 'old version', 'smarter', 'dumber']
+}
+report_card = []
+for feature, keywords in feature_keywords.items():
+    feature_df = df[df['review_content_lower'].str.contains('|'.join(keywords), na=False)]
+    if not feature_df.empty:
+        avg_rating = feature_df['rating'].mean()
+        top_phrase = get_top_ngrams(feature_df['review_content_lower'], top_k=1)
+        report_card.append({'Feature': feature, 'Avg Rating': avg_rating, 'Top Mentioned Phrase': top_phrase[0][0] if top_phrase else "N/A"})
+report_card_df = pd.DataFrame(report_card)
+
+four_star_reviews = df[df['rating'] == 4]['review_content_lower']
+four_star_phrases = get_top_ngrams(four_star_reviews)
+
+problem_keywords = {
+    'Bug Reports': ['crash', 'error', 'bug', 'doesn\'t work', 'broken'], 'Performance': ['slow', 'laggy', 'lag', 'latency', 'loading'],
+    'Monetization': ['price', 'cost', 'subscription', 'free version', 'limit']
+}
+for category, keywords in problem_keywords.items():
+    df[category] = df['review_content_lower'].str.contains('|'.join(keywords), na=False)
+health_trends = df.set_index('timestamp').resample('D')[list(problem_keywords.keys())].sum()
+daily_review_counts = df.set_index('timestamp').resample('D').size()
+health_trends_percent = health_trends.div(daily_review_counts, axis=0) * 100
 
 
-# --- 7. VISUALIZATION ---
-print("\n[PHASE 5/6] GENERATING VISUALIZATIONS...")
-sns.set_theme(style="whitegrid", palette="muted")
-fig, axes = plt.subplots(3, 2, figsize=(18, 22))
-fig.suptitle('Comprehensive Analysis of ChatGPT Google Play Reviews', fontsize=22, weight='bold')
+# --- 6. GENERATING VISUALS AND TEXT OUTPUTS ---
+print("\n[PHASE 4/5] GENERATING VISUALS AND TEXT OUTPUTS...")
+fig, axes = plt.subplots(2, 2, figsize=(18, 16))
+fig.suptitle('Strategic Intelligence Dashboard for ChatGPT', fontsize=22, weight='bold')
 
-# Plot 1: Ratings Distribution (No changes)
-rating_counts = df['rating'].value_counts().sort_index()
-sns.barplot(x=rating_counts.index, y=rating_counts.values, ax=axes[0, 0], palette="viridis")
-axes[0, 0].set_title('1. Ratings Distribution', fontsize=16)
+# Plot 1: Influential Community Feedback (Diverging Bar Chart)
+ax1 = axes[0, 0]
+influential_neg_df = pd.DataFrame(top_influential_neg_phrases, columns=['phrase', 'count'])
+influential_pos_df = pd.DataFrame(top_influential_pos_phrases, columns=['phrase', 'count'])
+influential_neg_df['count'] = -influential_neg_df['count'] # Make counts negative
+influential_df = pd.concat([influential_pos_df.assign(type='Positive'), influential_neg_df.assign(type='Negative')])
+sns.barplot(x='count', y='phrase', data=influential_df, hue='type', ax=ax1, dodge=False, palette={'Positive': '#2ca02c', 'Negative': '#d62728'})
+ax1.set_title('1. Top Concerns of Most Influential Users (Top 1% Voted)', fontsize=16)
+ax1.set_xlabel('Frequency (Negative vs. Positive)')
+ax1.set_xticks(ax1.get_xticks())
+ax1.set_xticklabels([abs(int(x)) for x in ax1.get_xticks()])
+ax1.legend(title='Sentiment')
 
-# ==============================================================================
-# == FIX IMPLEMENTED HERE: Changed resampling from Weekly ('W') to Daily ('D') ==
-reviews_per_day = df.set_index('timestamp').sort_index().resample('D').size()
-sns.lineplot(data=reviews_per_day, ax=axes[0, 1], color='royalblue')
-axes[0, 1].set_title('2. Review Volume Per Day (Recent History)', fontsize=16)
-# ==============================================================================
+# Plot 2: Top "Almost Perfect" Feedback
+ax2 = axes[0, 1]
+four_star_df = pd.DataFrame(four_star_phrases, columns=['phrase', 'count'])
+sns.barplot(x='count', y='phrase', data=four_star_df, ax=ax2, palette="YlOrBr_r")
+ax2.set_title('2. Top Feedback from "Almost Perfect" 4-Star Reviews', fontsize=16)
 
-# Plot 3: Review Length Distribution (No changes)
-sns.histplot(df['review_length'], bins=50, kde=True, ax=axes[1, 0], color='darkorange')
-axes[1, 0].set_title('3. Review Length Distribution (Characters)', fontsize=16)
-axes[1, 0].set_xlim(0, 600)
+# Plot 3: Feature Report Card
+ax3 = axes[1, 0]
+if not report_card_df.empty:
+    sns.barplot(x='Avg Rating', y='Feature', data=report_card_df.sort_values('Avg Rating'), ax=ax3, palette="coolwarm")
+    ax3.set_title('3. Feature-Specific "Report Card" (Average Rating)', fontsize=16)
+    ax3.set_xlim(left=min(2.0, report_card_df['Avg Rating'].min() - 0.2))
 
-# Plot 4: Average Rating by App Version (No changes)
-if 'app_version' in df.columns and not df['app_version'].isnull().all():
-    top_versions = df['app_version'].dropna().value_counts().nlargest(15).index
-    df_top_versions = df[df['app_version'].isin(top_versions)]
-    avg_rating_by_version = df_top_versions.groupby('app_version')['rating'].mean().sort_index()
-    sns.barplot(x=avg_rating_by_version.values, y=avg_rating_by_version.index, ax=axes[1, 1], orient='h', palette="coolwarm_r")
-    axes[1, 1].set_title('4. Avg Rating by App Version (Top 15)', fontsize=16)
-else:
-    axes[1, 1].text(0.5, 0.5, 'App Version Data Not Available', ha='center', va='center')
-    axes[1, 1].set_title('4. Avg Rating by App Version', fontsize=16)
+# Plot 4: Product Health Dashboard
+ax4 = axes[1, 1]
+health_trends_percent.plot(kind='line', ax=ax4, marker='o', markersize=4)
+ax4.set_title('4. Product Health Dashboard (% of Daily Reviews)', fontsize=16)
+ax4.set_ylabel('% of Daily Reviews by Category')
+ax4.legend(title='Complaint Category')
 
-# Plot 5: Top Phrases in Negative Reviews (No changes)
-if top_negative_bigrams:
-    neg_bigrams_df = pd.DataFrame(top_negative_bigrams, columns=['bigram', 'count'])
-    sns.barplot(x='count', y='bigram', data=neg_bigrams_df, ax=axes[2, 0], palette="Reds_r")
-axes[2, 0].set_title('5. Top Phrases in Negative Reviews', fontsize=16)
-
-# Plot 6: Top Phrases in Positive Reviews (No changes)
-if top_positive_bigrams:
-    pos_bigrams_df = pd.DataFrame(top_positive_bigrams, columns=['bigram', 'count'])
-    sns.barplot(x='count', y='bigram', data=pos_bigrams_df, ax=axes[2, 1], palette="Greens_r")
-axes[2, 1].set_title('6. Top Phrases in Positive Reviews', fontsize=16)
-
-plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-plt.savefig('chatgpt_review_analysis_corrected.png', dpi=300)
-print("\nVisualizations saved as 'chatgpt_review_analysis_corrected.png'")
+plt.tight_layout(rect=[0, 0.03, 1, 0.96])
+plt.savefig('chatgpt_visuals_final.png', dpi=300)
+print("\nStrategic dashboard saved as 'chatgpt_visuals_final.png'")
 plt.show()
 
-# --- 8. FINAL SUMMARY ---
-print("\n[PHASE 6/6] FINAL SUMMARY...")
-print("Analysis complete.")
+# Print text outputs for the report
+print("\n--- TEXT OUTPUTS FOR FINAL REPORT ---")
+print("\n### Brief 1: The Community Voice ###")
+print("**Top phrases from the most influential NEGATIVE reviews:**")
+print(pd.DataFrame(top_influential_neg_phrases, columns=['Phrase', 'Frequency']).to_markdown(index=False))
+print("\n**Top phrases from the most influential POSITIVE reviews:**")
+print(pd.DataFrame(top_influential_pos_phrases, columns=['Phrase', 'Frequency']).to_markdown(index=False))
+
+print("\n\n### Brief 2: Feature Report Card ###")
+if not report_card_df.empty:
+    report_card_df['Avg Rating'] = report_card_df['Avg Rating'].map('{:.2f}'.format)
+print(report_card_df.to_markdown(index=False))
+
+print("\n\n### Brief 3: The Conversion Opportunity ###")
+print("**Top feedback themes from 4-star reviewers:**")
+print(four_star_df.to_markdown(index=False))
+
+# --- 7. FINAL SUMMARY ---
+print("\n[PHASE 5/5] Analysis complete.")
