@@ -164,8 +164,8 @@ ax4.set_ylabel('% of Daily Reviews by Category')
 ax4.legend(title='Complaint Category')
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.96])
-plt.savefig('chatgpt_visuals_final.png', dpi=300)
-print("\nStrategic dashboard saved as 'chatgpt_visuals_final.png'")
+plt.savefig('chatgpt_visuals_revised.png', dpi=300)
+print("\nStrategic dashboard saved as 'chatgpt_visuals_revised.png'")
 plt.show()
 
 # Print text outputs for the report
