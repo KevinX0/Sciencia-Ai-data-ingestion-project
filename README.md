@@ -75,7 +75,7 @@ The dashboard below summarizes the findings from four key investigative angles, 
 | wait hours       |           3 |
 | hours use        |           3 |
 
-*   **So What? Recommendation:** An OpenAI product manager should treat these themes as a **high-priority backlog**. The data indicates that "long thinking" (latency) and frustration with usage limits ("reached limit," "wait hours") are not just isolated complaints but are recognized by the wider community as significant problems. **Immediate Action:** Convene a meeting between Product and Engineering to review and prioritize tickets related to model latency and the UX around usage limits.
+*   **Recommendation:** An OpenAI product manager should treat these themes as a **high-priority backlog**. The data indicates that "long thinking" (latency) and frustration with usage limits ("reached limit," "wait hours") are not just isolated complaints but are recognized by the wider community as significant problems. **Immediate Action:** Convene a meeting between Product and Engineering to review and prioritize tickets related to model latency and the UX around usage limits.
 
 ### **Brief #2: Feature Report Card**
 *   **Business Question:** How are our key product features performing individually in terms of user satisfaction, and where should we focus our engineering resources?
@@ -88,7 +88,7 @@ The dashboard below summarizes the findings from four key investigative angles, 
 | Image             |         3.21 | image generation       |
 | Model Performance |         2.41 | new model              |
 
-*   **So What? Recommendation:** This is the most urgent insight in the report. The core product—the AI model itself—is the primary driver of user dissatisfaction. The "chrome" (Voice, Image features) is performing better than the "engine." This is a fundamental product risk. **Immediate Action:** Launch a P0 (highest priority) investigation into the perceived performance regression of the "new model." The team must determine if this is a genuine quality issue or a user perception problem that requires better communication and expectation-setting.
+*   **Recommendation:** This is the most urgent insight in the report. The core product—the AI model itself—is the primary driver of user dissatisfaction. The "chrome" (Voice, Image features) is performing better than the "engine." This is a fundamental product risk. **Immediate Action:** Launch a P0 (highest priority) investigation into the perceived performance regression of the "new model." The team must determine if this is a genuine quality issue or a user perception problem that requires better communication and expectation-setting.
 
 ### **Brief #3: The Conversion Opportunity**
 *   **Business Question:** What is the single biggest hurdle preventing our satisfied (4-star) customers from becoming passionate advocates (5-star)?
@@ -108,13 +108,13 @@ The dashboard below summarizes the findings from four key investigative angles, 
 | don know       |       7 |
 | nice work      |       7 |
 
-*   **So What? Recommendation:** This analysis identifies the highest-ROI opportunity for improving the app's overall rating. These are not complaints from angry users; they are signals from happy users who are hitting a wall. **Immediate Action:** The Product and Marketing teams should launch a sprint focused on the free-to-paid conversion path. Key questions to answer: Are usage limits communicated clearly? Is the value proposition of the paid tier obvious *at the moment a user hits a limit*? Small UX tweaks here could convert a massive cohort of users and significantly increase revenue and 5-star ratings.
+*   **Recommendation:** This analysis identifies the highest-ROI opportunity for improving the app's overall rating. These are not complaints from angry users; they are signals from happy users who are hitting a wall. **Immediate Action:** The Product and Marketing teams should launch a sprint focused on the free-to-paid conversion path. Key questions to answer: Are usage limits communicated clearly? Is the value proposition of the paid tier obvious *at the moment a user hits a limit*? Small UX tweaks here could convert a massive cohort of users and significantly increase revenue and 5-star ratings.
 
 ### **Brief #4: Product Health Dashboard**
 *   **Business Question:** Are our product problems chronic or acute? Are we introducing more bugs, or are users more concerned with performance and cost?
 *   **Methodology:** Reviews were programmatically categorized. The percentage of daily reviews falling into key problem categories was plotted over time to create a product health dashboard.
 *   **Findings & Decision-Making Value:** Chart 4 shows that **'Monetization'** is a chronic, persistent source of user complaints, consistently representing a larger share of issues than 'Performance' or 'Bug Reports'.
-*   **So What? Recommendation:** This provides a strategic, top-level view for leadership. While engineering can focus on fixing bugs (which appear as short-term spikes), the data suggests that the business needs a strategic review of the freemium model itself. The current balance is creating a constant, underlying drag on user sentiment that individual bug fixes will not solve. **Immediate Action:** This chart should be presented to product leadership to spark a strategic discussion about the long-term goals of the freemium tier.
+*   **Recommendation:** This provides a strategic, top-level view for leadership. While engineering can focus on fixing bugs (which appear as short-term spikes), the data suggests that the business needs a strategic review of the freemium model itself. The current balance is creating a constant, underlying drag on user sentiment that individual bug fixes will not solve. **Immediate Action:** This chart should be presented to product leadership to spark a strategic discussion about the long-term goals of the freemium tier.
 
 ---
 
