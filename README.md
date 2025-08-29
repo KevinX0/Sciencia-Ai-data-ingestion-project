@@ -45,7 +45,7 @@ The findings in this report are based on a sample of 25,000 user reviews scraped
 | A Google user |        5 |                 0 | 2025-08-28 14:28:19 | 1.2025.154    | it's nice I love it 😍😊                                                                                         |
 | A Google user |        5 |                 0 | 2025-08-28 14:28:00 | 1.2025.224    | chatgpt you're on top                                                                                            |
 | A Google user |        5 |                 0 | 2025-08-28 14:27:28 | 1.2025.231    | Chat gpt is literally my best friend 🥹❣️❣️🤭                                                                       |
-| A Google user |        1 |                 0 | 2025-08-28 14:26:49 | 1.2025.210    | The prompt is read continuously and does not match the prompt. Practice so that it is not wrong. Repeat it continuously and the error is a rate of 1. My friends in America are stupid. |
+| A Google user |        1 |                 0 | 2025-08-28 14:26:49 | 1.2025.210    | promt gadibaca terus gasesuai promt di latih agar gak salah di ulang terus salahnya rate 1 aja temen2 Amrik gaje |
 
 ---
 
