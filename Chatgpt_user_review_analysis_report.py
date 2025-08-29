@@ -1,8 +1,5 @@
 # ==============================================================================
 # SCRIPT: STRATEGIC BUSINESS ANALYSIS REPORT
-# DESCRIPTION: This script fulfills all supervisor requirements by generating
-#              essential metadata and data samples, AND performing four deep-dive
-#              analyses for a comprehensive, client-focused strategic report.
 # ==============================================================================
 
 # --- 1. SETUP AND IMPORTS ---
@@ -81,7 +78,7 @@ print(sample_df.to_markdown(index=False))
 # --- 5. PERFORMING FOUR DEEP-DIVE ANALYSES ---
 print("\n[PHASE 3/5] PERFORMING DEEP-DIVE ANALYSES...")
 
-# (The four analysis briefs are unchanged)
+# The four analysis briefs
 def get_top_ngrams(corpus, n=2, top_k=10):
     custom_stopwords = STOPWORDS.union(['app', 'chatgpt', 'chat', 'gpt', 'openai', 'i', 'the', 'it', 's'])
     try:
