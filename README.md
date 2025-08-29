@@ -53,7 +53,7 @@ The findings in this report are based on a sample of 25,000 user reviews scraped
 
 The dashboard below visualizes the key findings from the four analytical deep-dives, offering a consolidated view of the most critical performance indicators.
 
-![Data Visualization Dashboard](chatgpt_visuals_revised.png)
+![Data Visualization Dashboard](chatgpt_strategic_report_final.png)
 
 ---
 
