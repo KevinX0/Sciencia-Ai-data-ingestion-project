@@ -41,7 +41,7 @@ The findings in this report are based on a sample of 25,000 user reviews scraped
 ### **2.2. Raw Data Sample**
 | userName      |   rating |   thumbs_up_count | timestamp           | app_version   | review_content                                                                                                   |
 |:--------------|---------:|------------------:|:--------------------|:--------------|:-----------------------------------------------------------------------------------------------------------------|
-| A Google user |        5 |                 0 | 2025-08-28 14:28:39 | 1.2025.231    | عالی                                                                                                             |
+| A Google user |        5 |                 0 | 2025-08-28 14:28:39 | 1.2025.231    Excellent                                                                                                            |
 | A Google user |        5 |                 0 | 2025-08-28 14:28:19 | 1.2025.154    | it's nice I love it 😍😊                                                                                         |
 | A Google user |        5 |                 0 | 2025-08-28 14:28:00 | 1.2025.224    | chatgpt you're on top                                                                                            |
 | A Google user |        5 |                 0 | 2025-08-28 14:27:28 | 1.2025.231    | Chat gpt is literally my best friend 🥹❣️❣️🤭                                                                       |
