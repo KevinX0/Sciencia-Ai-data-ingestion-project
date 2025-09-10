@@ -78,32 +78,25 @@ def validate_review_data(df: pd.DataFrame) -> pd.DataFrame:
     
     initial_count = len(df)
     
-    # Remove duplicates based on reviewId
     df = df.drop_duplicates(subset=['reviewId'], keep='first')
+    df = df[df['content'].str.len() >= 5] 
     
-    # Filter out reviews that are too short (but be more lenient)
-    df = df[df['content'].str.len() >= 5]  # Reduced from 10 to 5
-    
-    # Ensure required columns exist and have correct types
     required_columns = ['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']
     missing_columns = [col for col in required_columns if col not in df.columns]
     
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
     
-    # Type conversions with more lenient error handling
     df['score'] = pd.to_numeric(df['score'], errors='coerce')
     df['thumbsUpCount'] = pd.to_numeric(df['thumbsUpCount'], errors='coerce')
     df['at'] = pd.to_datetime(df['at'], errors='coerce')
     
-    # Fill missing values instead of dropping rows
     df['userName'] = df['userName'].fillna('Anonymous')
     df['appVersion'] = df['appVersion'].fillna('Unknown')
     df['thumbsUpCount'] = df['thumbsUpCount'].fillna(0)
     
     # Only remove rows with critical missing data
     df = df.dropna(subset=['reviewId', 'content', 'score', 'at'])
-    
     # Ensure score is within valid range
     df = df[(df['score'] >= 1) & (df['score'] <= 5)]
     
@@ -114,10 +107,7 @@ def validate_review_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def transform_data(df: pd.DataFrame) -> pd.DataFrame:
     """Transform data for Snowflake ingestion."""
-    # Select and rename columns
     df_transformed = df[['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']].copy()
-    
-    # Rename columns to match Snowflake schema
     column_mapping = {
         'content': 'REVIEW_CONTENT',
         'score': 'RATING',
@@ -126,11 +116,7 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
         'appVersion': 'APP_VERSION'
     }
     df_transformed = df_transformed.rename(columns=column_mapping)
-    
-    # Convert timestamp to proper format (remove timezone for Snowflake compatibility)
     df_transformed['TIMESTAMP'] = pd.to_datetime(df_transformed['TIMESTAMP']).dt.tz_localize(None)
-    
-    # Reset index to avoid pandas warnings
     df_transformed = df_transformed.reset_index(drop=True)
     
     return df_transformed
