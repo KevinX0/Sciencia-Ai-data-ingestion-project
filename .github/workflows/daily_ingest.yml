@@ -1,40 +1,47 @@
-# This is a GitHub Actions workflow file
-# It defines a scheduled job to run our Python ingestion script
-
+# ==============================================================================
+# WORKFLOW: Daily Google Play Review Ingestion to Snowflake
+# ==============================================================================
 name: Daily Review Ingestion
 
-# This section defines the schedule
 on:
+  # 1. Scheduled Run: Triggers the workflow at 12:00 UTC every day.
   schedule:
-    # Runs At 12:00 UTC every day
     - cron: '0 12 * * *'
+
+  # 2. Manual Run: Allows you to trigger the workflow manually from the GitHub Actions tab.
   workflow_dispatch:
 
 jobs:
   scrape-and-ingest:
     runs-on: ubuntu-latest
+    
+    # Define the permissions the job needs (best practice for security)
+    permissions:
+      contents: read 
 
     steps:
-      # Step 1: Check out your repository's code
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # Step 1: Checks out your repository's code onto the runner
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
 
-      # Step 2: Set up a Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # Step 2: Sets up a specific Python version for consistency
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip' 
 
-      # Step 3: Install all the required libraries
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install google-play-scraper snowflake-connector-python pandas sqlalchemy python-dotenv pyarrow
+      # Step 3: Installs the exact Python libraries defined in requirements.txt
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt
 
-      # Step 4: Run the ingestion script
-      - name: Run ingestion script
+      # Step 4: Executes the Python ingestion script
+      - name: Run Python Ingestion Script
         env:
           SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
           SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-        run: python ingest_reviews.py
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+        run: python ingest_reviews_optimized.py
