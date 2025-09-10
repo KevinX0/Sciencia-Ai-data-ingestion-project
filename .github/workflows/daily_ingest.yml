@@ -4,18 +4,14 @@
 name: Daily Review Ingestion
 
 on:
-  # 1. Scheduled Run: Triggers the workflow at 12:00 UTC every day.
   schedule:
     - cron: '0 12 * * *'
-
-  # 2. Manual Run: Allows you to trigger the workflow manually from the GitHub Actions tab.
   workflow_dispatch:
 
 jobs:
   scrape-and-ingest:
     runs-on: ubuntu-latest
     
-    # Define the permissions the job needs (best practice for security)
     permissions:
       contents: read 
 

@@ -190,8 +190,8 @@ def ingest_data_optimized(conn: snowflake.connector.SnowflakeConnection, df: pd.
             schema=config.snowflake_schema,
             chunk_size=config.batch_size,
             quote_identifiers=False,
-            use_logical_type=True,  # Fix timezone warning
-            auto_create_table=False  # Table already exists
+            use_logical_type=True,  
+            auto_create_table=False 
         )
         
         if success:
