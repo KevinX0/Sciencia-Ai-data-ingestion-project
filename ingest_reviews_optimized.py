@@ -1,256 +1,129 @@
 # ==============================================================================
-# OPTIMIZED SCRIPT: Google Play Review Ingestion to Snowflake
+# SCRIPT: FINAL, ROBUST Google Play Review Ingestion to Snowflake
 # ==============================================================================
 
 import pandas as pd
-import numpy as np
 from google_play_scraper import reviews, Sort
 import snowflake.connector
-from snowflake.connector.pandas_tools import write_pandas
 import os
-import logging
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
 from dotenv import load_dotenv
+import logging
 import sys
-from contextlib import contextmanager
 
-# --- 1. CONFIGURATION AND LOGGING SETUP ---
-@dataclass
-class Config:
-    """Configuration class for the ingestion process."""
-    # Snowflake Configuration
-    snowflake_user: str
-    snowflake_password: str
-    snowflake_account: str
-    snowflake_warehouse: str = 'ANALYSIS_WH'
-    snowflake_database: str = 'CHATGPT_REVIEWS_DB'
-    snowflake_schema: str = 'PUBLIC'
-    
-    # App Configuration
-    app_id: str = 'com.openai.chatgpt'
-    reviews_to_scrape: int = 1000
-    batch_size: int = 500
-    
-    # Data Processing
-    min_review_length: int = 10
-    max_review_length: int = 5000
+# --- 1. SETUP ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
+logger = logging.getLogger(__name__)
+load_dotenv()
 
-def setup_logging() -> logging.Logger:
-    """Set up structured logging."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(f'review_ingestion_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-        ]
-    )
-    return logging.getLogger(__name__)
+# --- 2. CONFIGURATION ---
+SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER")
+SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD")
+SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
+if not all([SNOWFLAKE_USER, SNOWFLAKE_PASSWORD, SNOWFLAKE_ACCOUNT]):
+    raise ValueError("Missing Snowflake credentials. Please check your .env file.")
 
-def load_config() -> Config:
-    """Load configuration from environment variables."""
-    load_dotenv()
-    
-    required_vars = ['SNOWFLAKE_USER', 'SNOWFLAKE_PASSWORD', 'SNOWFLAKE_ACCOUNT']
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-    
-    return Config(
-        snowflake_user=os.getenv('SNOWFLAKE_USER'),
-        snowflake_password=os.getenv('SNOWFLAKE_PASSWORD'),
-        snowflake_account=os.getenv('SNOWFLAKE_ACCOUNT'),
-        snowflake_warehouse=os.getenv('SNOWFLAKE_WAREHOUSE', 'ANALYSIS_WH'),
-        snowflake_database=os.getenv('SNOWFLAKE_DATABASE', 'CHATGPT_REVIEWS_DB'),
-        snowflake_schema=os.getenv('SNOWFLAKE_SCHEMA', 'PUBLIC'),
-        app_id=os.getenv('APP_ID', 'com.openai.chatgpt'),
-        reviews_to_scrape=int(os.getenv('REVIEWS_TO_SCRAPE', '1000')),
-        batch_size=int(os.getenv('BATCH_SIZE', '500'))
-    )
+SNOWFLAKE_WAREHOUSE = 'ANALYSIS_WH'
+SNOWFLAKE_DATABASE = 'CHATGPT_REVIEWS_DB'
+SNOWFLAKE_SCHEMA = 'PUBLIC'
+APP_ID = 'com.openai.chatgpt'
+REVIEWS_TO_SCRAPE = int(os.getenv('REVIEWS_TO_SCRAPE', '10000'))
 
-# --- 2. DATA VALIDATION AND PROCESSING ---
-def validate_review_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate and clean review data."""
-    logger = logging.getLogger(__name__)
+# --- 3. MAIN EXECUTION ---
+def main():
+    logger.info("Starting review ingestion process.")
     
-    initial_count = len(df)
-    
-    df = df.drop_duplicates(subset=['reviewId'], keep='first')
-    df = df[df['content'].str.len() >= 5] 
-    
-    required_columns = ['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {missing_columns}")
-    
-    df['score'] = pd.to_numeric(df['score'], errors='coerce')
-    df['thumbsUpCount'] = pd.to_numeric(df['thumbsUpCount'], errors='coerce')
-    df['at'] = pd.to_datetime(df['at'], errors='coerce')
-    
-    df['userName'] = df['userName'].fillna('Anonymous')
-    df['appVersion'] = df['appVersion'].fillna('Unknown')
-    df['thumbsUpCount'] = df['thumbsUpCount'].fillna(0)
-    
-    # Only remove rows with critical missing data
-    df = df.dropna(subset=['reviewId', 'content', 'score', 'at'])
-    # Ensure score is within valid range
-    df = df[(df['score'] >= 1) & (df['score'] <= 5)]
-    
-    final_count = len(df)
-    logger.info(f"Data validation: {initial_count} -> {final_count} reviews ({initial_count - final_count} removed)")
-    
-    return df
+    # --- EXTRACT ---
+    logger.info(f"Scraping latest {REVIEWS_TO_SCRAPE} reviews...")
+    try:
+        reviews_data, _ = reviews(APP_ID, lang='en', country='us', sort=Sort.NEWEST, count=REVIEWS_TO_SCRAPE)
+        if not reviews_data:
+            logger.warning("No new reviews found. Exiting.")
+            return
+        df_raw = pd.DataFrame(reviews_data)
+        logger.info(f"Successfully scraped {len(df_raw)} raw reviews.")
+    except Exception as e:
+        logger.error(f"Failed during scraping: {e}", exc_info=True)
+        sys.exit(1)
 
-def transform_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Transform data for Snowflake ingestion."""
-    df_transformed = df[['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']].copy()
-    column_mapping = {
-        'content': 'REVIEW_CONTENT',
-        'score': 'RATING',
-        'thumbsUpCount': 'THUMBS_UP_COUNT',
-        'at': 'TIMESTAMP',
+    # --- TRANSFORM AND VALIDATE ---
+    initial_count = len(df_raw)
+    
+    # Handle the two possible version columns
+    if 'reviewCreatedVersion' in df_raw.columns:
+        df_raw['appVersion'] = df_raw['reviewCreatedVersion']
+    
+    required_cols = ['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']
+    for col in required_cols:
+        if col not in df_raw.columns:
+            df_raw[col] = None # Add missing columns to prevent errors
+
+    df_transformed = df_raw[required_cols].copy()
+    
+    # Clean and type-cast data
+    df_transformed.dropna(subset=['reviewId', 'content', 'score', 'at'], inplace=True)
+    df_transformed['score'] = pd.to_numeric(df_transformed['score'], errors='coerce').astype('Int64')
+    df_transformed['thumbsUpCount'] = pd.to_numeric(df_transformed['thumbsUpCount'], errors='coerce').fillna(0).astype(int)
+    df_transformed['at'] = pd.to_datetime(df_transformed['at'], errors='coerce')
+    
+    # Rename for Snowflake
+    df_transformed.rename(columns={
+        'reviewId': 'REVIEWID', 'userName': 'USERNAME', 'content': 'REVIEW_CONTENT',
+        'score': 'RATING', 'thumbsUpCount': 'THUMBS_UP_COUNT', 'at': 'TIMESTAMP',
         'appVersion': 'APP_VERSION'
-    }
-    df_transformed = df_transformed.rename(columns=column_mapping)
-    df_transformed['TIMESTAMP'] = pd.to_datetime(df_transformed['TIMESTAMP']).dt.tz_localize(None)
-    df_transformed = df_transformed.reset_index(drop=True)
+    }, inplace=True)
     
-    return df_transformed
+    final_count = len(df_transformed)
+    logger.info(f"Data validation complete. {final_count} of {initial_count} reviews are valid.")
+    if final_count == 0:
+        logger.warning("No valid reviews to load. Exiting.")
+        return
 
-# --- 3. SNOWFLAKE OPERATIONS ---
-@contextmanager
-def snowflake_connection(config: Config):
-    """Context manager for Snowflake connections."""
+    # --- LOAD ---
+    parquet_file_path = 'reviews_data.parquet'
+    df_transformed.to_parquet(parquet_file_path, index=False)
+    logger.info(f"Data saved to temporary file: {parquet_file_path}")
+
     conn = None
     try:
         conn = snowflake.connector.connect(
-            user=config.snowflake_user,
-            password=config.snowflake_password,
-            account=config.snowflake_account,
-            warehouse=config.snowflake_warehouse,
-            database=config.snowflake_database,
-            schema=config.snowflake_schema,
-            autocommit=False
+            user=SNOWFLAKE_USER, password=SNOWFLAKE_PASSWORD, account=SNOWFLAKE_ACCOUNT,
+            warehouse=SNOWFLAKE_WAREHOUSE, database=SNOWFLAKE_DATABASE, schema=SNOWFLAKE_SCHEMA
         )
-        yield conn
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        raise e
-    finally:
-        if conn and not conn.is_closed():
-            conn.close()
+        logger.info("Successfully connected to Snowflake.")
+        cs = conn.cursor()
+        
+        cs.execute("CREATE OR REPLACE TEMP STAGE my_temp_stage FILE_FORMAT = (TYPE = 'PARQUET');")
+        logger.info("Temporary stage and file format created.")
+        
+        file_uri = f"file://{os.path.abspath(parquet_file_path)}"
+        logger.info(f"Uploading file {file_uri} to stage...")
+        cs.execute(f"PUT {file_uri} @my_temp_stage;")
+        logger.info("File uploaded successfully.")
 
-def create_table_if_not_exists(conn: snowflake.connector.SnowflakeConnection, config: Config):
-    """Create the reviews table if it doesn't exist."""
-    create_table_sql = f"""
-    CREATE TABLE IF NOT EXISTS {config.snowflake_database}.{config.snowflake_schema}.REVIEWS (
-        REVIEWID VARCHAR(255) PRIMARY KEY,
-        USERNAME VARCHAR(255),
-        REVIEW_CONTENT TEXT,
-        RATING INTEGER,
-        THUMBS_UP_COUNT INTEGER,
-        TIMESTAMP TIMESTAMP_NTZ,
-        APP_VERSION VARCHAR(50)
-    );
-    """
-    
-    with conn.cursor() as cursor:
-        cursor.execute(create_table_sql)
+        merge_sql = """
+        MERGE INTO REVIEWS T
+        USING @my_temp_stage S
+        ON T.REVIEWID = S.$1:REVIEWID::VARCHAR
+        WHEN NOT MATCHED THEN
+            INSERT (REVIEWID, USERNAME, REVIEW_CONTENT, RATING, THUMBS_UP_COUNT, TIMESTAMP, APP_VERSION)
+            VALUES (S.$1:REVIEWID::VARCHAR, S.$1:USERNAME::VARCHAR, S.$1:REVIEW_CONTENT::VARCHAR, S.$1:RATING::INT, 
+                    S.$1:THUMBS_UP_COUNT::INT, S.$1:TIMESTAMP::TIMESTAMP_NTZ, S.$1:APP_VERSION::VARCHAR);
+        """
+        logger.info("Merging new data into final 'REVIEWS' table...")
+        result = cs.execute(merge_sql)
+        rows_inserted = result.fetchone()[0]
+        logger.info(f"Merge complete. {rows_inserted} new rows were added.")
 
-def ingest_data_optimized(conn: snowflake.connector.SnowflakeConnection, df: pd.DataFrame, config: Config) -> int:
-    """Optimized data ingestion using write_pandas."""
-    logger = logging.getLogger(__name__)
-    
-    try:
-        # Use write_pandas for efficient bulk insert with proper parameters
-        success, nchunks, nrows, _ = write_pandas(
-            conn=conn,
-            df=df,
-            table_name='REVIEWS',
-            database=config.snowflake_database,
-            schema=config.snowflake_schema,
-            chunk_size=config.batch_size,
-            quote_identifiers=False,
-            use_logical_type=True,  
-            auto_create_table=False 
-        )
-        
-        if success:
-            logger.info(f"Successfully ingested {nrows} rows in {nchunks} chunks")
-            return nrows
-        else:
-            raise Exception("Failed to write data to Snowflake")
-            
     except Exception as e:
-        logger.error(f"Error during data ingestion: {e}")
-        raise
-
-# --- 4. MAIN INGESTION PROCESS ---
-def scrape_reviews(config: Config) -> pd.DataFrame:
-    """Scrape reviews from Google Play Store."""
-    logger = logging.getLogger(__name__)
-    
-    logger.info(f"Scraping {config.reviews_to_scrape} reviews for app {config.app_id}")
-    
-    try:
-        reviews_data, continuation_token = reviews(
-            config.app_id,
-            lang='en',
-            country='us',
-            sort=Sort.NEWEST,
-            count=config.reviews_to_scrape
-        )
-        
-        if not reviews_data:
-            logger.warning("No reviews found")
-            return pd.DataFrame()
-        
-        df = pd.DataFrame(reviews_data)
-        logger.info(f"Successfully scraped {len(df)} reviews")
-        
-        return df
-        
-    except Exception as e:
-        logger.error(f"Error during scraping: {e}")
-        raise
-
-def main():
-    """Main execution function."""
-    logger = setup_logging()
-    logger.info("Starting review ingestion process")
-    
-    try:
-        # Load configuration
-        config = load_config()
-        logger.info(f"Configuration loaded: {config.app_id}, {config.reviews_to_scrape} reviews")
-        
-        # Scrape reviews
-        df_raw = scrape_reviews(config)
-        if df_raw.empty:
-            logger.warning("No reviews to process")
-            return
-        
-        # Validate and transform data
-        df_validated = validate_review_data(df_raw)
-        df_transformed = transform_data(df_validated)
-        
-        logger.info(f"Data prepared: {len(df_transformed)} reviews ready for ingestion")
-        
-        # Ingest to Snowflake
-        with snowflake_connection(config) as conn:
-            create_table_if_not_exists(conn, config)
-            rows_inserted = ingest_data_optimized(conn, df_transformed, config)
-            
-        logger.info(f"Ingestion complete: {rows_inserted} rows inserted")
-        
-    except Exception as e:
-        logger.error(f"Process failed: {e}")
+        logger.error(f"PROCESS FAILED: {e}", exc_info=True)
         sys.exit(1)
+    finally:
+        if 'cs' in locals(): cs.close()
+        if conn and not conn.is_closed(): conn.close()
+        logger.info("Snowflake connection closed.")
+        if os.path.exists(parquet_file_path):
+            os.remove(parquet_file_path)
+            logger.info(f"Temporary file {parquet_file_path} removed.")
 
 if __name__ == "__main__":
     main()
