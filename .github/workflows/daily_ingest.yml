@@ -1,11 +1,15 @@
 # ==============================================================================
 # WORKFLOW: Daily Google Play Review Ingestion to Snowflake
 # ==============================================================================
+
 name: Daily Review Ingestion
 
 on:
+  # 1. Scheduled Run
   schedule:
     - cron: '0 12 * * *'
+
+  # 2. Manual Run
   workflow_dispatch:
 
 jobs:
@@ -37,7 +41,4 @@ jobs:
           SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
           SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
-        run: python ingest_reviews_optimized.py
+        run: python ingest_reviews_optimized.py 
