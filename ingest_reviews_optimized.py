@@ -1,5 +1,5 @@
 # ==============================================================================
-# SCRIPT: FINAL, ROBUST Google Play Review Ingestion to Snowflake
+# SCRIPT: FINAL, ROBUST Google Play Review Ingestion to Snowflake (DEFINITIVE VERSION)
 # ==============================================================================
 
 import pandas as pd
@@ -31,7 +31,7 @@ REVIEWS_TO_SCRAPE = int(os.getenv('REVIEWS_TO_SCRAPE', '10000'))
 # --- 3. MAIN EXECUTION ---
 def main():
     logger.info("Starting review ingestion process.")
-    
+
     # --- EXTRACT ---
     logger.info(f"Scraping latest {REVIEWS_TO_SCRAPE} reviews...")
     try:
@@ -47,31 +47,23 @@ def main():
 
     # --- TRANSFORM AND VALIDATE ---
     initial_count = len(df_raw)
-    
-    # Handle the two possible version columns
     if 'reviewCreatedVersion' in df_raw.columns:
         df_raw['appVersion'] = df_raw['reviewCreatedVersion']
-    
     required_cols = ['reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'appVersion']
     for col in required_cols:
         if col not in df_raw.columns:
-            df_raw[col] = None # Add missing columns to prevent errors
-
+            df_raw[col] = None
     df_transformed = df_raw[required_cols].copy()
-    
-    # Clean and type-cast data
     df_transformed.dropna(subset=['reviewId', 'content', 'score', 'at'], inplace=True)
     df_transformed['score'] = pd.to_numeric(df_transformed['score'], errors='coerce').astype('Int64')
     df_transformed['thumbsUpCount'] = pd.to_numeric(df_transformed['thumbsUpCount'], errors='coerce').fillna(0).astype(int)
-    df_transformed['at'] = pd.to_datetime(df_transformed['at'], errors='coerce')
-    
-    # Rename for Snowflake
+    # CRITICAL: Ensure 'at' is timezone-naive for correct conversion later
+    df_transformed['at'] = pd.to_datetime(df_transformed['at'], errors='coerce').dt.tz_localize(None)
     df_transformed.rename(columns={
         'reviewId': 'REVIEWID', 'userName': 'USERNAME', 'content': 'REVIEW_CONTENT',
         'score': 'RATING', 'thumbsUpCount': 'THUMBS_UP_COUNT', 'at': 'TIMESTAMP',
         'appVersion': 'APP_VERSION'
     }, inplace=True)
-    
     final_count = len(df_transformed)
     logger.info(f"Data validation complete. {final_count} of {initial_count} reviews are valid.")
     if final_count == 0:
@@ -99,16 +91,35 @@ def main():
         logger.info(f"Uploading file {file_uri} to stage...")
         cs.execute(f"PUT {file_uri} @my_temp_stage;")
         logger.info("File uploaded successfully.")
+        
+        # ==============================================================================
+        # == DEFINITIVE FIX IMPLEMENTED HERE: Use a temporary table for staging ==
+        # Step 1: Create a temporary staging table by inferring schema from the file
+        cs.execute("""
+            CREATE OR REPLACE TEMP TABLE REVIEWS_STAGING AS
+            SELECT
+                $1:REVIEWID::VARCHAR AS REVIEWID,
+                $1:USERNAME::VARCHAR AS USERNAME,
+                $1:REVIEW_CONTENT::VARCHAR AS REVIEW_CONTENT,
+                $1:RATING::INT AS RATING,
+                $1:THUMBS_UP_COUNT::INT AS THUMBS_UP_COUNT,
+                TO_TIMESTAMP_NTZ($1:TIMESTAMP::BIGINT, 9) AS TIMESTAMP,
+                $1:APP_VERSION::VARCHAR AS APP_VERSION
+            FROM @my_temp_stage;
+        """)
+        logger.info("Temporary staging table created and populated successfully.")
 
+        # Step 2: Merge from the well-defined staging table into the final table
         merge_sql = """
         MERGE INTO REVIEWS T
-        USING @my_temp_stage S
-        ON T.REVIEWID = S.$1:REVIEWID::VARCHAR
+        USING REVIEWS_STAGING S
+        ON T.REVIEWID = S.REVIEWID
         WHEN NOT MATCHED THEN
             INSERT (REVIEWID, USERNAME, REVIEW_CONTENT, RATING, THUMBS_UP_COUNT, TIMESTAMP, APP_VERSION)
-            VALUES (S.$1:REVIEWID::VARCHAR, S.$1:USERNAME::VARCHAR, S.$1:REVIEW_CONTENT::VARCHAR, S.$1:RATING::INT, 
-                    S.$1:THUMBS_UP_COUNT::INT, S.$1:TIMESTAMP::TIMESTAMP_NTZ, S.$1:APP_VERSION::VARCHAR);
+            VALUES (S.REVIEWID, S.USERNAME, S.REVIEW_CONTENT, S.RATING, S.THUMBS_UP_COUNT, S.TIMESTAMP, S.APP_VERSION);
         """
+        # ==============================================================================
+        
         logger.info("Merging new data into final 'REVIEWS' table...")
         result = cs.execute(merge_sql)
         rows_inserted = result.fetchone()[0]
